@@ -244,14 +244,16 @@ class TestBackupSourceRegistration:
         # 数据类型数演进：78（基线）→ 80（v0.1.0-DEV）→ 75（2026-09-23 push2 族退役）
         #   → 115（SP-2026-09-23/25 数据源大扩充 + v3.3.15 备源补齐）
         #   → 105（2026-09-28 死源剥离：期权 2 + 指数 3 + 宏观 3 + 互动 2）
-        assert len(router._sources) == 105
+        #   → 107（SP-2026-10-13-001 tq 源新增 l2_stats + tdx_formula）
+        assert len(router._sources) == 107
 
     def test_total_registrations(self, router):
         # 总注册数演进：90 → 94（v3.3.14）→ 101（v3.3.15）→ 102 → 107
         #   → 100（2026-09-23 东财 push2 族退役）
         #   → 157（SP-2026-09-23/25 数据源大扩充 + v3.3.15 备源补齐）
         #   → 145（2026-09-28 死源剥离：12 个注册点移除）
-        assert sum(len(v) for v in router._sources.values()) == 145
+        #   → 148（SP-2026-10-13-001 tq 源 +3：realtime_quote/l2_stats/tdx_formula）
+        assert sum(len(v) for v in router._sources.values()) == 148
 
     def test_new_sources_registered_with_priority(self, router):
         for data_type, name, prio in NEW_SOURCES:

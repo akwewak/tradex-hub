@@ -12,7 +12,7 @@
   <img src="https://img.shields.io/badge/Python-3.13+-blue.svg" alt="Python"/>
   <img src="https://img.shields.io/badge/MCP-1.0-green.svg" alt="MCP"/>
   <img src="https://img.shields.io/badge/REST-v3.5.2-orange.svg" alt="REST"/>
-  <img src="https://img.shields.io/badge/Tools-166-orange.svg" alt="MCP Tools"/>
+  <img src="https://img.shields.io/badge/Tools-168-orange.svg" alt="MCP Tools"/>
   <img src="https://img.shields.io/badge/Endpoints-48-orange.svg" alt="REST Endpoints"/>
   <img src="https://img.shields.io/badge/License-Apache--2.0-yellow.svg" alt="License"/>
   <img src="https://img.shields.io/badge/Version-3.5.2-blue.svg" alt="Version"/>
@@ -22,7 +22,7 @@
 
 ## 项目介绍
 
-tradex-hub 是一个**本地运行的金融数据中台**，把分散在多个数据源（通达信、腾讯财经、东方财富、同花顺、新浪、巨潮、财联社、AKShare 等）的 A 股数据，统一封装成 **166 个 MCP 工具** + **58 个 REST 端点**（2026-09-28 死源剥离后基线），供 AI Agent（WorkBuddy / Claude Code / Cursor / Dify / LangChain）和前端看板（TradeX）一站式调用。
+tradex-hub 是一个**本地运行的金融数据中台**，把分散在多个数据源（通达信、腾讯财经、东方财富、同花顺、新浪、巨潮、财联社、AKShare 等）的 A 股数据，统一封装成 **168 个 MCP 工具** + **58 个 REST 端点**（2026-10-13 tq 本地源接入后基线），供 AI Agent（WorkBuddy / Claude Code / Cursor / Dify / LangChain）和前端看板（TradeX）一站式调用。
 
 **核心定位**：让 AI Agent **不用关心数据从哪儿来、怎么反爬、怎么降级** —— 只管调一个统一接口，tradex-hub 自动选最优数据源、自动健康检查、自动故障隔离。
 
@@ -31,7 +31,7 @@ tradex-hub 是一个**本地运行的金融数据中台**，把分散在多个�
 | 能力 | 说明 |
 |------|------|
 | **统一接入** | 一套接口同时服务 MCP 客户端（AI Agent）和 HTTP 客户端（看板/前端），共享同一业务逻辑层 |
-| **多源融合** | 78 个数据类型，102 个数据源实例，按封禁风险分三梯队，自动降级 |
+| **多源融合** | 80 个数据类型，103 个数据源实例，按封禁风险分三梯队，自动降级 |
 | **量化计算** | 技术指标（MACD/KDJ/RSI/BOLL）、绩效指标、多因子分析、条件选股 |
 | **决策支持** | 交易信号生成、综合诊断（个股/市场/技术）、龙虎榜、涨停揭秘 |
 | **实时盯盘** | eltdx 通达信协议常驻连接，五档盘口准实时推送 |
@@ -55,7 +55,7 @@ tradex-hub 是一个**本地运行的金融数据中台**，把分散在多个�
 │  协议层（双协议并存）                                            │
 │  ┌─────────────────────┐    ┌─────────────────────────────┐    │
 │  │  MCP Server         │    │  FastAPI REST               │    │
-│  │  166 个工具         │    │  58 个端点（/api/v1/*）      │    │
+│  │  168 个工具         │    │  58 个端点（/api/v1/*）      │    │
 │  └──────────┬──────────┘    └──────────────┬──────────────┘    │
 │             │                              │                    │
 │             └──────────┬───────────────────┘                    │
@@ -103,7 +103,7 @@ flowchart LR
     end
 
     subgraph Gateway["tradex-hub 网关 (端口 8000)"]
-        B1["MCP Server<br/>166 个工具<br/>JSON-RPC over HTTP"]
+        B1["MCP Server<br/>168 个工具<br/>JSON-RPC over HTTP"]
         B2["FastAPI REST<br/>48 个端点<br/>统一包裹响应"]
         B3["监控看板<br/>/dashboard<br/>Prometheus /metrics"]
         B1 -.共享.- B2
@@ -129,7 +129,7 @@ flowchart LR
 
 | 协议 | 适用场景 | 接口形态 |
 |------|----------|----------|
-| **MCP** | AI Agent 对话式调用（工具描述可被 LLM 理解） | JSON-RPC over HTTP，166 个工具 |
+| **MCP** | AI Agent 对话式调用（工具描述可被 LLM 理解） | JSON-RPC over HTTP，168 个工具 |
 | **REST** | 看板 / 外部系统 / 自定义脚本 | 标准 HTTP + JSON，48 端点，包裹响应 `{code, data, msg}` |
 
 两个协议返回的数据**完全一致**（仅序列化差异：MCP 返 JSON 字符串、REST 返包裹 dict），契约严格对齐。
@@ -166,7 +166,7 @@ flowchart TD
 
 | 梯队 | 数据源 | 特征 |
 |------|--------|------|
-| **第一梯队** | eltdx（通达信协议） / **tdx_mcp（通达信官方 MCP，可选）** / 腾讯财经 HTTP / 本地 vipdoc | 不封 IP，可高频调用 |
+| **第一梯队** | eltdx（通达信协议） / **tdx_mcp（通达信官方 MCP，可选）** / **tq（通达信 TQ 本地源，需客户端运行）** / 腾讯财经 HTTP / 本地 vipdoc | 不封 IP，可高频调用 |
 | **第二梯队** | 同花顺 / 新浪 / 巨潮 / 财联社 | 低风险，正常调用即可 |
 | **第三梯队** | 东财 push2 / push2ex / slist | 高封禁风险，仅用于独有数据，自动限流（间隔 ≥1s + 随机抖动） |
 
@@ -225,9 +225,22 @@ TDX_MCP_MIN_INTERVAL=0.8
 > ⚠️ 开源分发时请勿提交真实 token。token 冲突、泄漏或失效都只会让该源降级到
 > eltdx，不会导致服务不可用——这正是"平级互备"的设计意图。
 
+### 可选：通达信 TQ 本地源（tq）
+
+`tq` 是通达信客户端本地暴露的 JSON-RPC 通道（`http://127.0.0.1:17709/`），
+与 eltdx / tdx_mcp 同属第一梯队，`realtime_quote` 互为备份（本地直连 ~11ms，不封 IP），
+并提供两个**独占增量工具**：
+
+- `get_l2_stats(code)`：当日 L2 统计（逐笔委托数 / 逐笔成交数 / 买撤单额 / 卖撤单额）
+- `run_tdx_formula(formula, codes)`：通达信内置公式批量计算（公式生态桥）
+
+**零配置**：无需任何 env。通达信客户端（含 Python 插件支持的版本）运行中即自动可用；
+未运行时该源自动降级（DEBUG 日志，不影响其他源）。可用 env `TQ_ENDPOINT` / `TQ_TIMEOUT`
+覆盖默认端点与超时。
+
 ---
 
-## MCP 工具清单（166 个）
+## MCP 工具清单（168 个）
 
 完整工具清单详见 [docs/MCP_TOOLS.md](docs/MCP_TOOLS.md)。按业务领域分组：
 
@@ -242,6 +255,7 @@ TDX_MCP_MIN_INTERVAL=0.8
 | 技术指标 | 6 | `calculate_macd` / `calculate_kdj` / `calculate_rsi` / `calculate_boll` / `calculate_atr` |
 | 涨停龙虎 | 8 | `get_limit_up_down` / `get_limit_up_board` / `get_limit_up_insight` / `get_dragon_tiger` |
 | eltdx 专有 | 31 | 五档盘口 / 集合竞价 / 逐笔 / 分时 / F10 / 短线指标 / 题材 / 分类行情 等 |
+| 通达信 TQ（独占） | 2 | `get_l2_stats` / `run_tdx_formula`（L2 统计 / 公式生态桥，需客户端运行中） |
 | 决策支持 | 16 | `generate_trading_signal` / `analyze_stock_comprehensive` / `screen_stocks` / `calculate_factor_score` |
 | 诊断 | 5 | `health_check` / `get_data_source_health` / `get_data_source_dashboard` |
 | 其他 | 23 | 可转债 / ETF / 宏观 / 估值 / 持仓 / 研报 / 公告 等 |
@@ -340,7 +354,7 @@ if resp["code"] == 0:
 | `tradex_data_source_latency_seconds{source}` | Gauge | 数据源最近响应延迟（秒） |
 | `tradex_slow_queries_total` | Counter | 慢查询总数（超过 `TRADEX_SLOW_QUERY_MS` 默认 800ms） |
 | `tradex_gateway_uptime_seconds` | Gauge | 网关运行时长 |
-| `tradex_tools_registered` | Gauge | 已注册 MCP 工具数（166） |
+| `tradex_tools_registered` | Gauge | 已注册 MCP 工具数（168） |
 | `tradex_cache_hits_total` / `cache_misses_total` | Counter | 缓存命中 / 未命中 |
 
 ### Dashboard 监控看板
@@ -460,7 +474,7 @@ curl http://your-host:8000/api/v1/market/overview
 ```bash
 # 健康检查
 curl http://127.0.0.1:8000/health
-# 期望: {"status":"ok","service":"tradex-mcp","tools":166}
+# 期望: {"status":"ok","service":"tradex-mcp","tools":168}
 
 # REST 端点
 curl http://127.0.0.1:8000/api/v1/ping

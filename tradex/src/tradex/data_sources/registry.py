@@ -16,7 +16,7 @@
 数据源矩阵（v0.1.0-DEV + tdx_mcp 平级互备 + 东财 push2 族退役）：
   | data_type            | priority=1          | priority=100  | priority=200  | exclusive | P999 (东财兜底) |
   |----------------------|---------------------|---------------|---------------|-----------|----------------|
-  | realtime_quote       | eltdx, tdx_mcp      | akshare       | tencent_http  |           |                |
+  | realtime_quote       | eltdx, tdx_mcp, tq  | akshare       | tencent_http  |           |                |
   | historical_kline     | eltdx, tdx_mcp      | akshare       |               |           |                |
   | screener (增量)      | tdx_mcp             |               |               |           |                |
   | research_report(增量)| tdx_mcp             |               |               |           |                |
@@ -78,6 +78,7 @@ from . import em_client as emc
 from . import ths_fetchers as ths
 from . import tdx_local as tdx
 from . import tdx_mcp_fetchers as tdxm  # 通达信官方 MCP（与 eltdx 平级互备，v0.1.0-DEV）
+from . import tq_fetchers as tqf  # 通达信 TQ 本地源（HTTP 17709，SP-2026-10-13-001）
 # ── 数据源大扩充（SP-2026-09-23-001）：新增 11 个 fetcher 模块 ──
 from . import sina_fetchers as sina          # 新浪研报/资金流/期权
 from . import baidu_fetchers as baidu        # 百度股市通 K 线
@@ -168,6 +169,14 @@ def _do_register() -> None:
     # 不影响注册，也不影响 eltdx 正常服务。
     router.register("realtime_quote", "tdx_mcp", tdxm.fetch_realtime_quote, priority=1)
     router.register("historical_kline", "tdx_mcp", tdxm.fetch_historical_kline, priority=1)
+
+    # ── 通达信 TQ 本地源（tq，SP-2026-10-13-001）──
+    # 走本地 HTTP 17709（JSON-RPC），依赖通达信客户端运行中；未运行 → TQSourceUnavailable
+    # → 标准失败降级（DEBUG 日志，客户端没开是常态）。与 eltdx/tdx_mcp 平级互备。
+    router.register("realtime_quote", "tq", tqf.fetch_realtime_quote_tq, priority=1)
+    # tq 独占增量类型（eltdx/tdx_mcp/akshare 均无）：L2 统计 + 通达信公式生态桥
+    router.register("l2_stats", "tq", tqf.fetch_l2_stats, priority=1)
+    router.register("tdx_formula", "tq", tqf.fetch_tdx_formula, priority=1)
 
     # ── 通达信官方 MCP 纯增量类型（eltdx 无法提供的增量能力，独立 data_type）──
     # 这些不属于"与 eltdx 互备"，而是官方 MCP 的额外能力，经 registry 统一暴露：
