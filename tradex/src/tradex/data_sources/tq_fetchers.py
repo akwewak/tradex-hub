@@ -195,10 +195,13 @@ def fetch_l2_stats(code: str = "", symbol: str = "", **kwargs) -> dict:
 # ── fetch_fn：tdx_formula（通达信公式生态桥，tq 独占增量） ──
 
 def fetch_tdx_formula(formula: str = "", stock_list: list | None = None,
-                      return_count: int = 1, stock_period: str = "1d", **kwargs) -> dict:
+                      return_count: int = 1, stock_period: str = "1d",
+                      return_date: bool = False, **kwargs) -> dict:
     """批量执行通达信内置公式（如 MA/MACD/KDJ 等任意客户端可用公式）。
 
-    返回 dict：{"<code>": {"<线名>": [值, ...], ...}, ...}（数值类型，None 保留）。
+    return_date=True 时每点为 {"Date": "YYYYMMDD", "Value": str}（供消费方
+    按日期精确对齐 K 线，如 TradeX 全市场选股管线）；False 时为纯值数组。
+    返回 dict：{"<code>": {"<线名>": [值/点, ...], ...}, ...}（数值类型，None 保留）。
     注意：L2 系公式（L2_AMO 等）取决于客户端公式系统是否提供，不存在时报
     ErrorId=9 → TQSourceUnavailable（2026-10-13 实测：当前开心果版无 L2_AMO）。
     """
@@ -212,6 +215,7 @@ def fetch_tdx_formula(formula: str = "", stock_list: list | None = None,
         "stock_list": codes,
         "stock_period": stock_period or "1d",
         "return_count": max(1, int(return_count)),
+        "return_date": bool(return_date),
     })
     if str(result.get("ErrorId", "0")) != "0":
         raise TQSourceUnavailable(
