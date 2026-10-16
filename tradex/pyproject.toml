@@ -27,8 +27,11 @@ classifiers = [
 dependencies = [
     # mcp 2.x 移除了 mcp.server.fastmcp.FastMCP v1 API（本项目 15+ 模块在用），锁定 1.x
     "mcp>=1.0.0,<2",
-    "akshare>=1.18.95",
-    "eltdx>=3.2.2",
+    # akshare 1.19.1 修复 stock_zh_a_spot 超时阻塞、stock_report_fund_hold 字段错位等多个 bug
+    # 1.19 起移除了 stock_margin_em，已改用 stock_margin_sse（见 akshare_fetchers.py）
+    "akshare>=1.19.1",
+    # eltdx 3.2.3 常规小版本迭代，无 breaking change
+    "eltdx>=3.2.3",
     "pandas>=2.0.0",
     "pydantic>=2.0.0",
     "requests>=2.28.0",

@@ -11,16 +11,26 @@
 
 价值：本地数据零网络依赖，全市场 5900+ 只票离线可取，
 是「东财被封、网络全断」时的兜底数据源。数据新鲜度取决于通达信最后更新的时间。
+
+本地数据路径配置（2026-10-14 老板需求）：
+  优先级从高到低：
+    1. set_tdx_dir(path) 运行时设置（最高，外部进程热切换用）
+    2. 环境变量 TRADEX_TDX_DIR
+    3. _TDX_CANDIDATES 自动探测（首次探测后缓存）
+  clear_cache() 清缓存让新设置立即生效（缓存是进程级，
+  import 后绑定的旧路径只有清缓存才会重新探测）。
 """
 from __future__ import annotations
 
+import os
 import struct
 from pathlib import Path
 
 import pandas as pd
 
-# 通达信安装目录候选（自动探测最新可用的）
+# 通达信安装目录候选（自动探测最新可用的，按优先级从上到下）
 _TDX_CANDIDATES = [
+    "D:/通达信金融终端X64(开心果整合版)V2026.8",  # 2026-10-14 老板切换到的整合版
     "D:/通达信金融终端(开心果交易版)V2026.6",
     "D:/通达信金融终端(开心果交易版)V2026.3",
     "D:/通达信金融终端(开心果交易版)V2026",
@@ -28,14 +38,64 @@ _TDX_CANDIDATES = [
     "C:/new_tdx",
 ]
 
+# 进程内缓存：
+#   - None 表示尚未探测；非 None 是已锁定的目录（含外部 set 的）
+#   - 与 _tdxdir_external 配合：external 优先级最高，但探测结果也缓存避免重复 IO
 _tdxdir_cache: Path | None = None
+# 外部显式设置的目录（最高优先级）。set_tdx_dir 写、clear_cache 重置。
+_tdxdir_external: Path | None = None
+
+
+def clear_cache() -> None:
+    """清空目录缓存，让下次 detect_tdx_dir() 重新探测 / 重新读环境变量。
+
+    调用场景：上层通过 POST /api/tdx/path 改了外部配置后，立即调用本函数，
+    让后续 fetch_local_kline 等读路径操作命中新配置。
+    """
+    global _tdxdir_cache, _tdxdir_external
+    _tdxdir_cache = None
+    _tdxdir_external = None
+
+
+def set_tdx_dir(path: str | Path | None) -> Path | None:
+    """运行时显式设置通达信目录（最高优先级），并清旧缓存。
+
+    传 None 等于 clear_cache()，回退到自动探测 / 环境变量。
+    返回最终生效目录（探测失败返回 None）。不校验路径存在性，调用方负责。
+    """
+    global _tdxdir_external, _tdxdir_cache
+    if path is None or str(path).strip() == "":
+        _tdxdir_external = None
+        _tdxdir_cache = None
+        return detect_tdx_dir()
+    p = Path(str(path).strip())
+    _tdxdir_external = p
+    _tdxdir_cache = p  # 同时锁定缓存，避免后续重新探测覆盖外部设置
+    return p
 
 
 def detect_tdx_dir() -> Path | None:
-    """自动探测通达信目录（找 vipdoc/sh/lday 存在的）。"""
+    """自动探测通达信目录（找 vipdoc/sh/lday 存在的）。
+
+    优先级：外部 set > 环境变量 TRADEX_TDX_DIR > _TDX_CANDIDATES 自动探测。
+    """
     global _tdxdir_cache
     if _tdxdir_cache is not None:
         return _tdxdir_cache
+    # 1) 外部运行时设置（最高优先级，set_tdx_dir 已写入 _tdxdir_external）
+    #    —— 因 set_tdx_dir 会同时写 _tdxdir_cache，此处正常不该命中；
+    #       但若外部模块直接写了 _tdxdir_external（不推荐），仍兜底生效。
+    if _tdxdir_external is not None and (_tdxdir_external / "vipdoc" / "sh" / "lday").is_dir():
+        _tdxdir_cache = _tdxdir_external
+        return _tdxdir_external
+    # 2) 环境变量（外部进程不改代码动态覆盖用）
+    env_path = os.environ.get("TRADEX_TDX_DIR", "").strip()
+    if env_path:
+        p = Path(env_path)
+        if (p / "vipdoc" / "sh" / "lday").is_dir():
+            _tdxdir_cache = p
+            return p
+    # 3) 候选清单自动探测
     for cand in _TDX_CANDIDATES:
         p = Path(cand)
         if (p / "vipdoc" / "sh" / "lday").is_dir():

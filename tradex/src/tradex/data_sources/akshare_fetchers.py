@@ -611,7 +611,7 @@ def fetch_macro_data(
       - gdp / cpi / pmi / money_supply: 宏观指标
       - fx_spot:                        外汇汇率
       - bond_yield:                     国债收益率
-      - margin_em:                      融资融券汇总
+      - margin_em:                      融资融券汇总（akshare 1.19 起 stock_margin_em 已移除，改用 stock_margin_sse 沪市汇总）
       - margin_sse:                     上交所融资融券明细
       - margin_szse:                    深交所融资融券明细
       - inner_trade:                    内部交易（股东增减持）
@@ -630,7 +630,10 @@ def fetch_macro_data(
     if endpoint == "bond_yield":
         return ak.bond_china_yield(start_date="", end_date="")
     if endpoint == "margin_em":
-        return ak.stock_margin_em()
+        # akshare 1.19.1 移除了 stock_margin_em（东财融资融券汇总），
+        # 改用 stock_margin_sse（上交所融资融券汇总）作为汇总级数据源，
+        # 保持「汇总 > 沪明细 > 深明细」的 fallback 链语义不变。
+        return ak.stock_margin_sse()
     if endpoint == "margin_sse":
         kw: dict = {}
         if date:
